@@ -1,4 +1,4 @@
-# Simulated_Municipal_Database
+# Simulated_Municipal_Service_Tool
 Introduction: 
 A command line interface (CLI) tool developed by a 3-person group, which interacts with a database via the use of SQLite3 module in Python to execute SQL statements and fulfill a series of tasks, like registering a new-born, paying for tickets. :smiley:
 
