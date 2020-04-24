@@ -7,6 +7,8 @@ import re
 import datetime
 import random
 
+# python Municipal_proj.py mp1.db
+
 connection = None
 cursor = None
 
@@ -477,78 +479,86 @@ def process_bill():
 def process_payment():
 	
 	global cursor, connection
-	print("Please enter the ticket number and amount of payment as prompted below")
-	tno = input("Ticket number: ")
-	while not(tno.isdigit()):
-		tno = input("Please make sure Ticket number is digit only: ")
+
+	while(True):
+		print("Please enter the ticket number and amount of payment as prompted below")
+		tno = input("Ticket number: ")
+		while not(tno.isdigit()):
+			tno = input("Please make sure Ticket number is digit only: ")
 
 
-	# type string converted to float type
-	amount = input("Amount of payment: ")
-	while not(amount.replace('.','1').isdigit()):
-		amount = input("Please make sure amount of payment is integer or float: ")
-	amount = float(amount)
+		# type string converted to float type
+		amount = input("Amount of payment: ")
+		while not(amount.replace('.','1').isdigit()):
+			amount = input("Please make sure amount of payment is integer or float: ")
+		amount = float(amount)
 
-	data = (tno, )
-	# check if the tno already has some amount paid
-	cursor.execute('''SELECT p.amount, t.fine FROM tickets AS t LEFT OUTER JOIN payments AS p
-						USING(tno) WHERE t.tno = ?;''', data)
-	record = cursor.fetchone()
-	paid = 0.0
-	remain = 0.0
+		data = (tno, )
+		# check if the tno already has some amount paid
+		cursor.execute('''SELECT p.amount, t.fine FROM tickets AS t LEFT OUTER JOIN payments AS p
+							USING(tno) WHERE t.tno = ?;''', data)
+		record = cursor.fetchone()
+		paid = 0.0
+		remain = 0.0
 
-	#no prior payments
-	if isinstance(record[0], type(None)):
-		fine = record[1]
-		# Exact, no more needed
-		if amount == fine:
-			print("Ticket paid in full with current payment, thank you.")
-		
-		# More payments to go
-		elif amount < fine:
-			print("Payment accepted, $", fine - amount, "left to be paid next time.")
-		
-		# Paid too much, only the fine amount is accepted
+		if record == None:
+			yn = input("Ticket number is not in they system, payment can't be made, would you like to enter again?")
+			if yn == 'y' or yn == 'Y':
+				continue
+			else:
+				return 
+		#no prior payments
+		elif isinstance(record[0], type(None)):
+			fine = record[1]
+			# Exact, no more needed
+			if amount == fine:
+				print("Ticket paid in full with current payment, thank you.")
+			
+			# More payments to go
+			elif amount < fine:
+				print("Payment accepted, $", fine - amount, "left to be paid next time.")
+			
+			# Paid too much, only the fine amount is accepted
+			else:
+				print("Only $", fine, "needed, thank you.")
+				data = (str(tno), datetime.date.today(), str(fine))
+				cursor.execute('''INSERT INTO payments (tno, pdate, amount)
+					VALUES (?,?,?);''', data)
+				return 
+			
+			data = (str(tno), datetime.date.today(), str(amount))
+			cursor.execute('''INSERT INTO payments (tno, pdate, amount) VALUES (?,?,?);''', data)
+			
+		# some payments already been made
 		else:
-			print("Only $", fine, "needed, thank you.")
-			data = (str(tno), datetime.date.today(), str(fine))
-			cursor.execute('''INSERT INTO payments (tno, pdate, amount)
-				VALUES (?,?,?);''', data)
-			return 
-		
-		data = (str(tno), datetime.date.today(), str(amount))
-		cursor.execute('''INSERT INTO payments (tno, pdate, amount) VALUES (?,?,?);''', data)
-		
-	# some payments already been made
-	else:
-		# type float
-		paid = record[0]
-		# type float
-		fine = record[1]
-		remain = fine - paid
+			# type float
+			paid = record[0]
+			# type float
+			fine = record[1]
+			remain = fine - paid
 
-		# been paid in full
-		if remain <= 0:
-			print("Ticket has already been paid in full, thank you.")
-			return 
+			# been paid in full
+			if remain <= 0:
+				print("Ticket has already been paid in full, thank you.")
+				return 
 
-		# payment accepted, no more payment needed
-		elif remain == amount:
-			print("Ticket paid in full with current payment, thank you.")
-			data = (datetime.date.today(), str(amount), str(tno))
-			cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', data)
+			# payment accepted, no more payment needed
+			elif remain == amount:
+				print("Ticket paid in full with current payment, thank you.")
+				data = (datetime.date.today(), str(amount), str(tno))
+				cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', data)
 
-		# more payments to go
-		elif remain > amount:
-			print("Payment accepted, $", remain - amount, "left to be paid next time.")
-			data = (datetime.date.today(), str(amount), str(tno))
-			cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', data)
-		
-		# pay too much, only record the amount needed
-		else:
-			print("Only $", remain, "needed, thank you.")
-			new_data = (datetime.date.today(), str(remain), str(tno))
-			cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', new_data)
+			# more payments to go
+			elif remain > amount:
+				print("Payment accepted, $", remain - amount, "left to be paid next time.")
+				data = (datetime.date.today(), str(amount), str(tno))
+				cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', data)
+			
+			# pay too much, only record the amount needed
+			else:
+				print("Only $", remain, "needed, thank you.")
+				new_data = (datetime.date.today(), str(remain), str(tno))
+				cursor.execute('''UPDATE payments SET pdate = ?, amount = ? WHERE tno = ?;''', new_data)
 
 	return
 
@@ -639,7 +649,7 @@ def getvDate():
 
 
 def issueTicket():
-#issue a ticket to a registration. takes a date, description, and fine amount
+	#issue a ticket to a registration. takes a date, description, and fine amount
 	global connection, cursor
 	
 	regNum = getReg()
